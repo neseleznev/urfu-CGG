@@ -7,6 +7,7 @@ Computer Graphics and Geometry (Компьютерная Графика и Ге�
 Домашние работы по КГГ
 
 
+inspired by [Roman Dubinin](https://github.com/RomanDubinin/CGG)
 
 **2014-2015 год** (3 курс)
 
