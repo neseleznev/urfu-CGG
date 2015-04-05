@@ -17,25 +17,25 @@ namespace Task1
     public class Program
     {
         // Нарисовать f на [xFrom; xTo] (с ручками и размером окна по умолчанию)
-        private static void DrawFunction(Core.FuncToShow f, double xFrom, double xTo)
+        private static void DrawFunction(Core.RealFunction f, double xFrom, double xTo)
         {
             DrawFunction(f, xFrom, xTo, Core.DefaultPen, Core.DefaultAxisPen, Core.DefaultWindowSize);
         }
 
         // Нарисовать f на [xFrom; xTo] ручкой pen, оси координат ручкой axisPen (размером окна по умолчанию)
-        private static void DrawFunction(Core.FuncToShow f, double xFrom, double xTo, Pen pen, Pen axisPen)
+        private static void DrawFunction(Core.RealFunction f, double xFrom, double xTo, Pen pen, Pen axisPen)
         {
             DrawFunction(f, xFrom, xTo, pen, axisPen, Core.DefaultWindowSize);
         }
 
         // Нарисовать f на [xFrom; xTo] в окне размером windowSize (с ручками по умолчанию) 
-        private static void DrawFunction(Core.FuncToShow f, double xFrom, double xTo, Point windowSize)
+        private static void DrawFunction(Core.RealFunction f, double xFrom, double xTo, Point windowSize)
         {
             DrawFunction(f, xFrom, xTo, Core.DefaultPen, Core.DefaultAxisPen, windowSize);
         }
 
         // Нарисовать f на [xFrom; xTo] ручкой pen, оси координат ручкой axisPen, размером окна windowSize
-        private static void DrawFunction(Core.FuncToShow f, double xFrom, double xTo, Pen pen, Pen axisPen, Point windowSize)
+        private static void DrawFunction(Core.RealFunction f, double xFrom, double xTo, Pen pen, Pen axisPen, Point windowSize)
         {
             if (windowSize.X * windowSize.Y == 0 || xFrom > xTo)
             {
@@ -116,7 +116,7 @@ namespace Task1
         }
 
 
-        private static readonly Core.FuncToShow[] Functions =
+        private static readonly Core.RealFunction[] Functions =
         {
             x => 1/x,
             x => 1,

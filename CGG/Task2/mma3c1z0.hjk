@@ -1,0 +1,313 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Linq;
+using System.Net.Mime;
+using System.Reflection.Emit;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using CGG;
+using Brushes = System.Drawing.Brushes;
+using Color = System.Drawing.Color;
+using Pen = System.Drawing.Pen;
+using Point = System.Drawing.Point;
+
+namespace Task2
+{
+    //    Task2: нарисовать с помощью алгоритма Брезенхема
+    //           параметрическую функцию
+    //     / x = at^2 + bt
+    //     \ y = ct + d
+
+    struct Params
+    {
+        public double A { get; set; }
+        public double B { get; set; }
+        public double C { get; set; }
+        public double D { get; set; }
+    }
+
+    class Program
+    {
+        private static void DrawParametricFunctionWithParams(Params arg)
+        {
+            DrawParametricFunctionWithParams(arg, Core.DefaultPen, Core.DefaultAxisPen, Core.DefaultWindowSize);
+        }
+
+        private static void DrawParametricFunctionWithParams(Params arg, Pen pen, Pen axisPen, Point windowSize)
+        {
+            double a = arg.A, b = arg.B, c = arg.C, d = arg.D;
+            
+            if (windowSize.X * windowSize.Y == 0) {
+                throw new ArgumentException("Неверные параметры! xFrom не должно быть больше xTo," +
+                                            "измерения windowSize не должны быть нулевыми.");
+            }
+
+            var image = new Bitmap(windowSize.X, windowSize.Y);
+            var g = Graphics.FromImage(image);
+//            g.FillRectangle(Core.DefaultBackgroundBrush, 0, 0, windowSize.X, windowSize.Y);
+
+            Point pFrom, pTo;
+            double xFrom, xTo;
+
+            if (Math.Abs(c) < Core.Eps)      // x = at^2 + bt
+            {                                // y = d
+                if (Math.Abs(a) < Core.Eps)
+                {
+                    if (Math.Abs(b) < Core.Eps)
+                    {
+                        // При a = 0, b = 0 график - одна точка (0; d). [по центру]
+                        pFrom = new Point(windowSize.X/2, windowSize.Y/2);
+                        pTo = new Point(windowSize.X/2, windowSize.Y/2);
+                        xFrom = xTo = 0.0;
+                    }
+                    else
+                    {
+                        // При a = 0, b ≠ 0 {(x, y) | x = bt, y = d, где b ≠ 0, t <- R },
+                        // т.е. прямая y = d [По центру, от левого до правого края экрана]
+                        pFrom = new Point(0, windowSize.Y/2);
+                        pTo = new Point(windowSize.X, windowSize.Y/2);
+                        xFrom = -1; xTo = 1;
+                    }
+                }
+                else
+                {
+                    // При a ≠ 0 имеем {(x, y) | x = at^2+bt, y = d, где t <- R }, т.е. прямая y = d 
+                    // При a > 0, x=x(t) - парабола, ветви вверх
+                    // При a < 0, x=x(t) - парабола, ветви вниз
+                    // Точка экстремума - вершина параболы (-b/2a; -b*b/4a)
+                    // Т.е. у нас луч из точки (-b*b/4a; d)
+                    if (a > 0) {
+                        pFrom = new Point(1, windowSize.Y/2);
+                        pTo = new Point(windowSize.X, windowSize.Y/2);
+                        xFrom = -b*b / (4.0*a); xTo = xFrom + 1;
+                    } else {
+                        pFrom = new Point(windowSize.X-1, windowSize.Y/2);
+                        pTo = new Point(0, windowSize.Y/2);
+                        xTo = (-b*b / (4.0*a)); xFrom = xTo - 1;
+                    }
+                }
+
+                Core.DrawAxis(g, axisPen, windowSize, xFrom, xTo, d, d);
+                if (Math.Abs(windowSize.X/2 - pFrom.X) < windowSize.X/2 &&
+                    Math.Abs(windowSize.Y/2 - pFrom.Y) < windowSize.Y/2)
+                {
+                    pen.Width = 4;
+                    g.DrawEllipse(pen, pFrom.X - 2, pFrom.Y - 2, 4, 4);
+                    pen.Width = 1;
+                }
+                if (pFrom.X == 0) pFrom.X++;
+                if (pFrom.Y == 0) pFrom.Y++;
+                if (pTo.X == 0) pTo.X++;
+                if (pTo.Y == 0) pTo.Y++;
+                if (pFrom.X == windowSize.X) pFrom.X--;
+                if (pFrom.Y == windowSize.Y) pFrom.Y--;
+                if (pTo.X == windowSize.X) pTo.X--;
+                if (pTo.Y == windowSize.Y) pTo.Y--;
+                
+                DrawLineWithBresenham(pFrom, pTo, image, Color.Yellow);
+                Core.ShowImageInWindow(image);
+                return;
+            }
+        // Далее c ≠ 0
+
+            if (Math.Abs(a) < Core.Eps)                 // x = (b/c)*y - (bd/c)
+            {
+                if (Math.Abs(b) < Core.Eps)             // x = 0
+                {
+                    pFrom = new Point(windowSize.X/2, 1);
+                    pTo = new Point(windowSize.X/2, windowSize.Y-1);
+                    Core.DrawAxis(g, axisPen, windowSize, 0.0, 0.0, 0.0, 0.0);
+                    g.DrawLine(pen, pFrom, pTo);
+                    DrawLineWithBresenham(pFrom, pTo, image, Color.Yellow);
+                    Core.ShowImageInWindow(image);
+                }
+                else                                    // y = (c/b)*x + d
+                {
+                    Core.FuncToShow straight = (x => (c/b)*x + d);
+                    xFrom = -1; xTo = 1;
+                    Core.DrawFunction(straight, xFrom, xTo, windowSize);
+
+                    Point pFrom = new Point(xFrom + 1*(xTo - xFrom)/windowSize.X);
+                    DrawLineWithBresenham(Point());
+                }
+                return;
+            }
+        // Далее a ≠ 0
+
+            // x =   A    * y^2  +         B      * y  +         C
+            // x = (a/c^2)*(y^2) + (b/c - 2ad/c^2)*(y) + (ad^2/c^2 - bd/c)
+            //
+            // D = B*B - 4*A*C = ... = (b/c)^2 >= 0
+            // Вершина: y0 = -B/(2A) = d - bc/(2a)
+            //          x0 = -D/(4A) = -b*b/(4a)
+            // Параметр: p =  1/|2a| = c*c/(2a)
+            // Канонический вид:
+            // (y -      y0    )^2 = 2 *     p      * (x -    x0   )
+            // (y - (d-bc/(2a)))^2 = 2 * (c*c/(2a)) * (x + b*b/(4a))
+            // То есть:
+            //     x0 =   -b*b / (4a)
+            //     y0 = d - bc / (2a)
+            //     p  =    c*c / (2a)
+            // Сделаем перенос начала координат в точку (x0; y0), тогда для отрисовки необходим
+            // фокальный параметр и оси координат в нужном месте.
+
+
+            // 
+            double x0 = b*b / (-4*a),
+                   y0 = d - b*c / (2*a),
+                    p = c*c / (2*a);
+
+            //Console.WriteLine("Start - ({0}; {1})", y0, x0);
+
+            //Core.DrawFunction((y => (a / (c * c)) * (y - (d - (b * c) / (2 * a))) * (y - (d - (b * c) / (2 * a))) + (-b * b) / (4 * a)),
+            //    y0 - windowSize.X / 2f, y0 + windowSize.X / 2f);
+
+            Core.DrawAxis(g, axisPen, windowSize, (int)(windowSize.X/2f - x0), (int)(windowSize.Y/2f + y0));
+            DrawParabolaWithBresenham(p: p, image: image, color: pen.Color, windowSize: windowSize);
+            Core.ShowImageInWindow(image);
+        }
+
+        private static void DrawParabolaWithBresenham(double p, Bitmap image, Color color, Point windowSize)
+        {
+            int maxX = windowSize.X/2, maxY = windowSize.Y/2;     // Размеры области [Замечание: везде пользуемся половиной]
+            int x = 0, y = 0;                                       // Перенос вершины (x0; y0) в (0; 0). Экранные=(maxX; maxY)
+            var deltaX = (p < Core.Eps) ? -1 : 1;                   // Рост x в зависимости от направления ветвей параболы
+
+        // Рисуем параболу с фок.параметром p в области [-maxX; maxX]x[-maxY; maxY]
+        // Вершина по центру
+            image.SetPixel(maxX, maxY, color);
+
+            do
+            {
+            // Расстояния от трёх возможных точек до параболы:
+                int Sd = (int) ((y + 1)*(y + 1) - 2*p*(x + deltaX)),// Диагональ
+                    Sv = (int) ((y + 1)*(y + 1) - 2*p*x),           // Вертикаль
+                    Sh = (int) (y*y - 2*p*(x + deltaX));            // Горизонталь
+
+                if (Math.Abs(Sh) <= Math.Abs(Sv))
+                {
+                    if (Math.Abs(Sd) < Math.Abs(Sh))
+                        y++;
+                    x += deltaX;
+                }
+                else
+                {
+                    if (Math.Abs(Sd) < Math.Abs(Sv))
+                        x += deltaX;
+                    y++;
+                }
+//          Точка, сдвинутая к центру (x0; y0), масштабированная в интервале [-width/2; width/2]
+//              int screenX = (int)(((x+x0) - (x0 -width/2f)) * width  / ((x0+ width/2f) - (x0- width/2f))),
+//                  screenY = (int)(((y0+height/2f) - (y+y0)) * height / ((y0+height/2f) - (y0-height/2f)));
+//          Упростив, получаем:
+//              int screenX = x + width/2,
+//                  screenY = height/2 - y;
+//          Рисуем только {scrX, scrY}, которые принадлежат (0, width)x(0, height).
+                if (Math.Abs(x) >= maxX) break;                      // Полотно кончилось
+                if (Math.Abs(y) >= maxY) continue;
+                image.SetPixel(x + maxX, maxY - y, color);           // "Верхняя" ветвь (y++)
+                image.SetPixel(x + maxX, maxY + y, color);           // "Нижняя"
+            } while (true);                                          // Выход учтён выше :)
+        }
+
+        public static void DrawLineWithBresenham(Point pFrom, Point pTo, Bitmap image, Color color)
+        {
+            int x0 = pFrom.X, y0 = pFrom.Y, x1 = pTo.X, y1 = pTo.Y;
+            var steep = Math.Abs(y1 - y0) > Math.Abs(x1 - x0);
+            // Отражаем линию по диагонали, если угол наклона слишком большой
+            if (steep)
+            {
+                Core.Swap(ref x0, ref y0);
+                Core.Swap(ref x1, ref y1);
+            }
+            // Если линия растёт не слева направо, то меняем начало и конец отрезка местами
+            if (x0 > x1)
+            {
+                Core.Swap(ref x0, ref x1);
+                Core.Swap(ref y0, ref y1);
+            }
+            int dx = x1 - x0,
+                dy = Math.Abs(y1 - y0),
+                error = (dx >> 1), // Здесь используется оптимизация с умножением на dx, чтобы избавиться от лишних дробей
+                ystep = (y0 < y1) ? 1 : -1, // Выбираем направление роста координаты y
+                y = y0;
+            for (var x = x0; x <= x1; x++)
+            {
+                image.SetPixel(steep ? y : x, steep ? x : y, color);
+                error -= dy;
+                if (error >= 0) continue;
+                y += ystep;
+                error += dx;
+            }
+        }
+
+        private static readonly Params[] Tests =
+        {
+//            // Вырожденные случаи C=0 (точка, луч, прямая)
+//            new Params { A = 0, B = 0, C = 0, D = 0 },  // Одна точка 0;0 (рисуем по центру)
+//            new Params { A = 0, B = 0, C = 0, D = 1 },  // Одна точка 0;1 (рисуем по центру)
+//            new Params { A = 0, B = 7, C = 0, D = 1 },  // Прямая y = d
+            new Params { A = 1, B = 0, C = 0, D = 1 },  // Луч вправо из нуля
+            new Params { A = 1, B =-1, C = 0, D = 1 },  // Луч вправо из -1/4;d
+            new Params { A =-1, B =10, C = 0, D = 1 },  // Луч влево из 25;d
+//
+//            // Вырожденные случаи A=0 (прямые)
+//            new Params { A = 0, B = 0, C = 1, D =123},  // Прямая x = 0
+//            new Params { A = 0, B = 1, C = 1, D = 1 },  // Прямая y =  x + 1
+//            new Params { A = 0, B = 2, C = 6, D =-1 },  // Прямая y = 3x - 1
+
+            // Параболы (A≠0, C≠0)
+//            new Params { A =-1, B = -2, C = 3, D = 200 },  // 
+//            new Params { A = 1/7f,  B =-2,      C =-3,  D =-40 },  // 
+//            new Params { A = 1/2f,  B = 10,     C = 6,  D = 300 },  // 
+//            new Params { A = 1/20f, B = 10,     C = 1,  D = 50 },  // 
+//            new Params { A = -1/7f,  B =-2,      C =-3,  D =-40 },  // 
+//            new Params { A = -1/2f,  B = 10,     C = 6,  D = 300 },  // 
+//            new Params { A = -1/20f, B = 10,     C = 1,  D = 50 },  // 
+        };
+
+        public static void Main(string[] args)
+        {
+            foreach (var param in Tests)
+                DrawParametricFunctionWithParams(param);
+            var r = new Random(0);
+            while (true)
+            {
+                double A = r.Next(int.MinValue, int.MaxValue)/(double)(r.Next()+1),
+                       B = r.Next(int.MinValue, int.MaxValue)/(double)(r.Next()+1),
+                       C = r.Next(int.MinValue, int.MaxValue)/(double)(r.Next()+1),
+                       D = r.Next(int.MinValue, int.MaxValue)/(double)(r.Next()+1);
+                if (r.Next(100) < 5)             // Точка (d;0)         // 5%
+                {
+                    A = B = C = 0;
+                }
+                else if (r.Next(100) < 5)             // Прямая x = d   // ~5%
+                {
+                    A = C = 0; // B != 0
+                    if (Math.Abs(B) < Core.Eps)
+                        B = r.Next(1, int.MaxValue) * (1 - 2 * r.Next(0, 2)) / (double)(r.Next() + 1);
+                }
+                else if (r.Next(100) < 5)             // Луч из (d;0)   // ~5%
+                {
+                    C = 0; // A != 0
+                    if (Math.Abs(A) < Core.Eps)
+                        A = r.Next(1, int.MaxValue) * (1 - 2 * r.Next(0, 2)) / (double)(r.Next() + 1);
+                }
+                else if (r.Next(100) < 5)             //   // 5%
+                {
+                    A = C = 0; // C != 0
+                }
+                if (r.Next(100) < 25) B = 0;                            // 25%
+                if (r.Next(100) < 10) C = 0;                            // 25%
+                if (r.Next(100) < 25) D = 0;                            // 25%
+                DrawParametricFunctionWithParams(new Params {A = A, B = B, C = C, D = D});
+            }
+        }
+    }
+}
