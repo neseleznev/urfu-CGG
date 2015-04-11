@@ -133,12 +133,13 @@ namespace Task2
             double x0 = b*b / (-4*a),
                    y0 = d - b*c / (2*a),
                     p = c*c / (2*a);
+            Console.WriteLine("{0} {1}", x0, y0);
             Core.DrawAxisForNewCenter(image, axisPen, windowSize, x0, y0);
-            DrawParabolaWithFocusParameter(p: p, image: image, color: pen.Color, windowSize: windowSize);
+            Core.DrawParabolaWithBresenham(p: p, image: image, color: pen.Color, windowSize: windowSize);
             Core.ShowImageInWindow(image);
         }
 
-        private static void DrawParabolaWithFocusParameter(double p, Bitmap image, Color color, Point windowSize)
+        private static void DrawParabolaWithBresenham(double p, Bitmap image, Color color, Point windowSize)
         {
             int maxX = windowSize.X/2, maxY = windowSize.Y/2;       // Размеры области [Замечание: везде пользуемся половиной]
             int x = 0, y = 0;                                       // Перенос вершины (x0; y0) в (0; 0). Экранные=(maxX; maxY)
@@ -182,12 +183,12 @@ namespace Task2
         private static readonly Params[] Tests =
         {
             // Вырожденные случаи C=0 (точка, луч, прямая)
-            new Params { A = 0,     B = 0,  C = 0,  D = 0 },  // Одна точка 0;0 (рисуем по центру)
-            new Params { A = 0,     B = 0,  C = 0,  D = 100 },// Одна точка 0;100 (рисуем по центру)
+            new Params { A = 0,     B = 0,  C = 0,  D = 0 },  // Одна точка (0; 0) (рисуем по центру)
+            new Params { A = 0,     B = 0,  C = 0,  D = 100 },// Одна точка (0; 100) (рисуем по центру)
             new Params { A = 0,     B = 7,  C = 0,  D = 1 },  // Прямая y = d
             new Params { A = 1,     B = 0,  C = 0,  D = 0 },  // Луч вправо из нуля
-            new Params { A = 1,     B = 10, C = 0,  D = 100 },// Луч вправо из -b*b/4a;d
-            new Params { A =-1,     B = 10, C = 0,  D = 100 },// Луч влево из -b*b/4a;d
+            new Params { A = 1,     B = 10, C = 0,  D = 100 },// Луч вправо из (-b*b/4a; d)
+            new Params { A =-1,     B = 10, C = 0,  D = 100 },// Луч влево  из (-b*b/4a; d)
 
             // Вырожденные случаи A=0 (прямые)
             new Params { A = 0,     B = 0,  C = 1,  D = 123 },// Прямая x = 0
@@ -195,13 +196,13 @@ namespace Task2
             new Params { A = 0,     B = 2,  C = 6,  D =-100 },// Прямая y = 3x - 100
 
             // Параболы (A≠0, C≠0)
-            new Params { A =-1, B = -2, C = 3, D = 200 },  // 
-            new Params { A = 1/7f,  B =-2,      C =-3,  D =-40 },  // 
-            new Params { A = 1/2f,  B = 10,     C = 6,  D = 300 },  // 
-            new Params { A = 1/10f, B = 10,     C = 1,  D = 50 },  // 
-            new Params { A = -1/7f,  B =-2,      C =-3,  D =-40 },  // 
-            new Params { A = -1/2f,  B = 10,     C = 6,  D = 300 },  // 
-            new Params { A = -1/10f, B = 10,     C = 1,  D = 50 },  // 
+            new Params { A =-1,     B = -2, C = 3,  D = 200 },// Влево, с центром ( 1; 197)
+            new Params { A = 1/7f,  B =-2,  C =-3,  D =-40  },// Вправо,с центром (-7; -61)
+            new Params { A = 1/2f,  B = 10, C = 6,  D = 300 },// Вправо,с центром (50; 240)
+            new Params { A = 1/10f, B = 10, C = 1,  D = 50  },// Вправо,с центром ( 0; 250)
+            new Params { A =-1/7f,  B =-2,  C =-3,  D =-40  },// Влево, с центром ( 7; -19)
+            new Params { A =-1/2f,  B = 10, C = 6,  D = 300 },// Влево, с центром (50; 360)
+            new Params { A =-1/10f, B = 10, C = 1,  D = 50  },// Влево, с центром (250;100)
         };
 
         public static void Main(string[] args)
@@ -211,11 +212,11 @@ namespace Task2
             var r = new Random(0);
             while (true)
             {
-                double A = r.Next(-100, 100) / (double)(r.Next(10) + 1),
-                       B = r.Next(-100, 100) / (double)(r.Next(10) + 1),
-                       C = r.Next(-100, 100) / (double)(r.Next(10) + 1),
-                       D = r.Next(-100, 100) / (double)(r.Next(10) + 1);
-                DrawParametricFunctionWithParams(new Params {A = A, B = B, C = C, D = D});
+                double a = r.Next(-100, 100) / (double)(r.Next(10) + 1),
+                       b = r.Next(-100, 100) / (double)(r.Next(10) + 1),
+                       c = r.Next(-100, 100) / (double)(r.Next(10) + 1),
+                       d = r.Next(-100, 100) / (double)(r.Next(10) + 1);
+                DrawParametricFunctionWithParams(new Params {A = a, B = b, C = c, D = d});
             }
         }
     }

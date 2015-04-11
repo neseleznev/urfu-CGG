@@ -17,7 +17,7 @@ namespace CGG
         public static readonly Pen DefaultPen = new Pen(Color.DarkRed, 1);
         public static readonly Pen DefaultAxisPen = new Pen(Color.DarkBlue, 3);
         public static readonly Brush DefaultBackgroundBrush = Brushes.White;
-        public static readonly Point DefaultWindowSize = new Point(768,1366);//new Point(1366, 768);//new Point(600, 600);
+        public static readonly Point DefaultWindowSize = new Point(600, 600);
 
         public static void Swap<T>(ref T lhs, ref T rhs)
         {
@@ -148,7 +148,7 @@ namespace CGG
                 Dock = DockStyle.Fill,
                 SizeMode = PictureBoxSizeMode.CenterImage
             });
-            //form.ShowDialog();
+            form.ShowDialog();
         }
 
 
