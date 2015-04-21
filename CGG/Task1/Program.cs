@@ -18,21 +18,22 @@ namespace Task1
     {
         private static readonly Core.RealFunction[] Functions =
         {
-            x => 1/x,
-            x => 1,
-            x => 0,
-            x => (1/x)*Math.Sin(1/x),
+            
+//            x => 1/x,
+//            x => 1,
+//            x => 0,
+//            x => (1/x)*Math.Sin(1/x),
             x => x*Math.Cos(x*x),
-            x => Math.Cos(1/x),
-            x => Math.Sqrt(x),
-            x => x*x*x,
-            x => x*x*x*x*x,
+//            x => Math.Cos(1/x),
+//            x => Math.Sqrt(x),
+//            x => x*x*x,
+//            x => x*x*x*x*x,
         };
 
         public static void Main(string[] args)
         {
             foreach (var function in Functions)
-                Core.DrawFunction(function, -3.0, 3.0);
+                Core.DrawFunction(function, -2.0, 5.0);
         }
     }
 }

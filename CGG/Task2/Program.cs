@@ -182,6 +182,8 @@ namespace Task2
 
         private static readonly Params[] Tests =
         {
+            
+            new Params { A = -1, B = -30, C = 1,  D = 10  },
             // Вырожденные случаи C=0 (точка, луч, прямая)
             new Params { A = 0,     B = 0,  C = 0,  D = 0 },  // Одна точка (0; 0) (рисуем по центру)
             new Params { A = 0,     B = 0,  C = 0,  D = 100 },// Одна точка (0; 100) (рисуем по центру)
