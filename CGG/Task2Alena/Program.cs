@@ -1,16 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Linq;
-using System.Net.Mime;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using CGG;
 using Brush = System.Drawing.Brush;
 using Brushes = System.Drawing.Brushes;
@@ -18,7 +7,7 @@ using Color = System.Drawing.Color;
 using Pen = System.Drawing.Pen;
 using Point = System.Drawing.Point;
 
-namespace Task2
+namespace Task2Alena
 {
     //    Task2: нарисовать с помощью алгоритма Брезенхема
     //           параметрическую функцию
@@ -96,68 +85,51 @@ namespace Task2
                 return;
             }
             // Далее везде c ≠ 0
+            // Получили (2c)y^2 + y(sq(2)/2)(b-a) + x(sq(2)/2)(a+b) при повороте на pi/2
 
-            if (Math.Abs(b + c) < Core.Eps)
+            if (Math.Abs(a + b) < Core.Eps)
             {
-                // При c ≠ 0, b+c ≠ 0 график - прямая y = sq(2)/4 - (sq(2)/4)*(b/c)
-                // При повороте с.к. на -pi/4
+                // При c ≠ 0, a+b = 0 график - пара параллельных прямых y = x и y = x - (b-a/c)
+                Core.DrawAxisAtCenter(image, axisPen, windowSize);
 
-                
+                // y = x
+                pFrom = new Point(1, windowSize.Y-1);
+                pTo = new Point(windowSize.X-1, 1);
+                Core.DrawLineWithBresenham(pFrom, pTo, image, pen.Color);
+                // y = x - (b-a)/c в зависимости от знака (b-a)/c нарисуем параллельную прямую ниже или выше y=x
+                if (Math.Abs(b - a) > Core.Eps)
+                {   // Если прямые не совпадают
+                    if (b - a < Core.Eps)
+                    {
+                        pFrom = new Point(1, (int)(windowSize.Y * 9.0 / 10));
+                        pTo = new Point((int)(windowSize.X * 9.0 / 10), 1);
+                    }
+                    else
+                    {
+                        pFrom = new Point((int)(windowSize.X * 1.0 / 10), windowSize.Y - 1);
+                        pTo = new Point(windowSize.X - 1, (int)(windowSize.Y * 1.0 / 10));
+                    }
+                    Core.DrawLineWithBresenham(pFrom, pTo, image, pen.Color); 
+                }
+
+                Core.ShowImageInWindow(image);
+                return;
             }
-//            if (Math.Abs(windowSize.X / 2 - pFrom.X) < windowSize.X / 2 &&
-//                    Math.Abs(windowSize.Y / 2 - pFrom.Y) < windowSize.Y / 2)
-//                {
-//                    pen.Width = 4;
-//                    var g = Graphics.FromImage(image);
-//                    g.DrawEllipse(pen, pFrom.X - 2, pFrom.Y - 2, 4, 4);
-//                    pen.Width = 1;
-//                }
-//                Core.DrawLineWithBresenham(pFrom, pTo, image, pen);
-//                Core.ShowImageInWindow(image);
-//                return;
-//            }
-//
-//            if (Math.Abs(a) < Core.Eps)                 // x = (b/c)*(y - d)
-//            {
-//                if (Math.Abs(b) < Core.Eps)             // x = 0
-//                {
-//                    Core.DrawAxisAtCenter(image, axisPen, windowSize);
-//                    Core.DrawLineWithBresenham(new Point(windowSize.X / 2, 1), new Point(windowSize.X / 2, windowSize.Y - 1),
-//                        image, pen.Color);
-//                    Core.ShowImageInWindow(image);
-//                }
-//                else                                    // y = (c/b)*x + d
-//                {
-//                    Core.DrawFunction((x => (c / b) * x + d), -windowSize.X / 2f, windowSize.X / 2f, windowSize);
-//                }
-//                return;
-//            }
-//            // Далее a ≠ 0
-//
-//            // x =   A    * y^2  +         B      * y  +         C
-//            // x = (a/c^2)*(y^2) + (b/c - 2ad/c^2)*(y) + (ad^2/c^2 - bd/c)
-//            //
-//            // D = B*B - 4*A*C = ... = (b/c)^2 >= 0
-//            // Вершина: y0 = -B/(2A) = d - bc/(2a)
-//            //          x0 = -D/(4A) = -b*b/(4a)
-//            // Параметр: p =  1/|2a| = c*c/(2a)
-//            // Канонический вид:
-//            // (y -      y0    )^2 = 2 *     p      * (x -    x0   )
-//            // (y - (d-bc/(2a)))^2 = 2 * (c*c/(2a)) * (x + b*b/(4a))
-//            // То есть:
-//            //     x0 =   -b*b / (4a)
-//            //     y0 = d - bc / (2a)
-//            //     p  =    c*c / (2a)
-//            // Сделаем перенос начала координат в точку (x0; y0), тогда для отрисовки необходим
-//            // фокальный параметр и оси координат в нужном месте.
-//
-//            double x0 = b * b / (-4 * a),
-//                   y0 = d - b * c / (2 * a),
-//                    p = c * c / (2 * a);
-//            Console.WriteLine("{0} {1}", x0, y0);
-//            Core.DrawAxisForNewCenter(image, axisPen, windowSize, x0, y0);
-//            Core.DrawParabolaWithBresenham(p: p, image: image, color: pen.Color, windowSize: windowSize);
-//            Core.ShowImageInWindow(image);
+            // (2c)y^2 + y(sq(2)/2)(b-a) + x(sq(2)/2)(a+b) при повороте на pi/4
+            // (y + (sq(2)/8)*(b-a)/c)^2 = 2 * (-(sq(2)/8)*(a+b)/c) * (x - (sq(2)/32)*((b-a)^2)/(b+a))
+            // Вершина: y0 = -(sq(2)/8)*(b-a)/c
+            //          x0 = (sq(2)/32)*((b-a)^2)/(b+a)
+            // Параметр: p = -(sq(2)/8)*(a+b)/c
+            // Сделаем перенос начала координат в точку (x0; y0), тогда для отрисовки необходим
+            // фокальный параметр и оси координат в нужном месте.
+
+            double x0 = (Math.Sqrt(2)/32)*(b - a)*(b - a)/(b + a),
+                y0 = (Math.Sqrt(2)/8)*(b - a)/c,
+                p = -(Math.Sqrt(2)/8)*(a + b)/c;
+            Console.WriteLine("{0} {1}", x0, y0);
+            Core.DrawAxisRotatedForNewCenter(image, axisPen, windowSize, x0, y0);
+            Core.DrawParabolaWithBresenham(p: p, image: image, color: pen.Color, windowSize: windowSize);
+            Core.ShowImageInWindow(image);
         }
 
         private static void DrawParabolaWithBresenham(double p, Bitmap image, Color color, Point windowSize)
@@ -213,25 +185,20 @@ namespace Task2
             new Params { A = -1,  B = 1,  C = 0 }, // y = -x
             new Params { A = 10,  B = 1,  C = 0 }, // y = 10*x
 
-//            // Вырожденные случаи A=0 (прямые)
-//            new Params { A = 0,     B = 0,  C = 1 },// Прямая x = 0
-//            new Params { A = 0,     B = 1,  C = 1 },// Прямая y =  x + 100
-//            new Params { A = 0,     B = 2,  C = 6 },// Прямая y = 3x - 100
+//            // Вырожденные случаи A+B=0 (параллельные прямые)
+              new Params { A = 0,     B = 0,  C = 1 },// Совпали y=x. y=x
+              new Params { A =-1,     B = 1,  C = 1 },// Прямые y=x, y=x-1
+              new Params { A = 1,     B =-1,  C = 6 },// Прямые y=x, y=x+1
 //
-//            // Параболы (A≠0, C≠0)
-//            new Params { A =-1,     B = -2, C = 3 },// Влево, с центром ( 1; 197)
-//            new Params { A = 1/7f,  B =-2,  C =-3 },// Вправо,с центром (-7; -61)
-//            new Params { A = 1/2f,  B = 10, C = 6 },// Вправо,с центром (50; 240)
-//            new Params { A = 1/10f, B = 10, C = 1 },// Вправо,с центром ( 0; 250)
-//            new Params { A =-1/7f,  B =-2,  C =-3 },// Влево, с центром ( 7; -19)
-//            new Params { A =-1/2f,  B = 10, C = 6 },// Влево, с центром (50; 360)
-//            new Params { A =-1/10f, B = 10, C = 1 },// Влево, с центром (250;100)
+//            // Параболы (A+B≠0, C≠0)
+            new Params { A = 1,     B = 1,  C = 1 },// Влево, с центром ( 1; 197)
         };
 
         public static void Main(string[] args)
         {
             foreach (var param in Tests)
                 DrawParametricFunctionWithParams(param);
+
             var r = new Random(0);
             while (true)
             {

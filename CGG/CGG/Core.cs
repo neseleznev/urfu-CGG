@@ -120,9 +120,9 @@ namespace CGG
                 if (screenY != null)
                     verticalArrowSize = Math.Min(arrowSize, screenY.Value);
                 DrawLineWithBresenham(new Point(screenX.Value, 0),
-                    new Point(screenX.Value + verticalArrowSize/2, verticalArrowSize), image, axisPen);
+                    new Point(screenX.Value + verticalArrowSize / 2, verticalArrowSize), image, axisPen);
                 DrawLineWithBresenham(new Point(screenX.Value, 0),
-                    new Point(Math.Max(screenX.Value-verticalArrowSize/2, 0), verticalArrowSize), image, axisPen);
+                    new Point(Math.Max(screenX.Value - verticalArrowSize / 2, 0), verticalArrowSize), image, axisPen);
             }
 
             if (screenY != null)
@@ -136,6 +136,37 @@ namespace CGG
                 DrawLineWithBresenham(new Point(windowSize.X, screenY.Value), new Point(windowSize.X - horizontalArrowSize,
                     screenY.Value - horizontalArrowSize / 2), image, axisPen);
             }
+        }
+        public static void DrawAxisRotatedForNewCenter(Bitmap image, Pen axisPen, Point windowSize, double newCenterX, double newCenterY)
+        {
+            Point pFrom1 = new Point((int)(windowSize.X / 2f - newCenterX), (int)(windowSize.Y / 2f + newCenterY)),
+                pTo1 = pFrom1;
+            int dist11 = Math.Min(pFrom1.X, pFrom1.Y), dist12 = Math.Min(windowSize.X - pTo1.X, windowSize.Y - pTo1.Y);
+            pFrom1.X -= dist11 - 1;
+            pFrom1.Y -= dist11 - 1;
+            pTo1.X += dist12 - 1;
+            pTo1.Y += dist12 - 1;
+            DrawLineWithBresenham(pFrom1, pTo1, image, axisPen);
+            
+            Point pFrom2 = new Point((int)(windowSize.X / 2f - newCenterX), (int)(windowSize.Y / 2f + newCenterY)),
+                pTo2 = pFrom2;
+            int dist21 = Math.Min(pFrom2.X, windowSize.Y - pFrom2.Y), dist22 = Math.Min(windowSize.X - pTo2.X, pTo2.Y);
+            pFrom2.X -= dist21 - 1;
+            pFrom2.Y += dist21 - 1;
+            pTo2.X += dist22 - 1;
+            pTo2.Y -= dist22 - 1;
+            DrawLineWithBresenham(pFrom2, pTo2, image, axisPen);
+
+            var arrowSize = (new List<int> { 10, windowSize.X / 20, windowSize.Y / 20 }).Min();
+            DrawLineWithBresenham(new Point(pTo1.X, pTo1.Y),
+                new Point(pTo1.X, pTo1.Y - arrowSize), image, axisPen);
+            DrawLineWithBresenham(new Point(pTo1.X, pTo1.Y),
+                new Point(pTo1.X - arrowSize, pTo1.Y), image, axisPen);
+
+            DrawLineWithBresenham(new Point(pTo2.X, pTo2.Y),
+                new Point(pTo2.X - arrowSize, pTo2.Y), image, axisPen);
+            DrawLineWithBresenham(new Point(pTo2.X, pTo2.Y),
+                new Point(pTo2.X, pTo2.Y + arrowSize), image, axisPen);
         }
 
         // Отрисовка самого простого окна
