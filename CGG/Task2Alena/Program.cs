@@ -191,7 +191,10 @@ namespace Task2Alena
               new Params { A = 1,     B =-1,  C = 6 },// Прямые y=x, y=x+1
 //
 //            // Параболы (A+B≠0, C≠0)
-            new Params { A = 1,     B = 1,  C = 1 },// Влево, с центром ( 1; 197)
+            new Params { A = 1,     B = 1,  C = 1 },
+            new Params { A = 100,     B = 10, C =-1 },
+            new Params { A =-100,     B = 10, C =-1 },
+            new Params { A =-200,     B = 10, C =-10},
         };
 
         public static void Main(string[] args)
@@ -204,9 +207,9 @@ namespace Task2Alena
             {
                 DrawParametricFunctionWithParams(new Params
                 {
-                    A = r.Next(-100, 100) / (double)(r.Next(10) + 1),
-                    B = r.Next(-100, 100) / (double)(r.Next(10) + 1),
-                    C = r.Next(-100, 100) / (double)(r.Next(10) + 1)
+                    A = r.Next(-1000, 1000) / (double)(r.Next(10) + 1),
+                    B = r.Next(-1000, 1000) / (double)(r.Next(10) + 1),
+                    C = r.Next(-1000, 1000) / (double)(r.Next(10) + 1)
                 });
             }
         }
