@@ -11,13 +11,32 @@ namespace CGG
 {
     public class Core
     {
+        // Константы
         public const double Eps = 1e-9;
         public delegate double RealFunction(double x);
+        public delegate double Real3DFunction(double x, double y);
 
         public static readonly Pen DefaultPen = new Pen(Color.DarkRed, 1);
         public static readonly Pen DefaultAxisPen = new Pen(Color.DarkBlue, 3);
         public static readonly Brush DefaultBackgroundBrush = Brushes.White;
+        public static readonly Pen DefaultPen3DTop = new Pen(Color.DeepPink);
+        public static readonly Pen DefaultPen3DBottom = new Pen(Color.Blue);
         public static readonly Point DefaultWindowSize = new Point(600, 600);
+
+        // Утилиты
+
+        // Отрисовка самого простого окна
+        public static void ShowImageInWindow(Image image)
+        {
+            var form = new Form { ClientSize = new Size(image.Width, image.Height) };
+            form.Controls.Add(new PictureBox
+            {
+                Image = image,
+                Dock = DockStyle.Fill,
+                SizeMode = PictureBoxSizeMode.CenterImage
+            });
+            form.ShowDialog();
+        }
 
         public static void Swap<T>(ref T lhs, ref T rhs)
         {
@@ -38,24 +57,21 @@ namespace CGG
             }
         }
 
-        // Вычислим минимальное и максимальное значения функции на заданном интервале [xFrom; xTo]
-        public static Tuple<double, double> GetMinMaxValues(RealFunction f, double xFrom, double xTo, int windowWidth)
+        public static IEnumerable<double> Range(double from, double to, double accuracy)
         {
-            double maxY = double.MinValue,
-                   minY = double.MaxValue;
-            double x, y;
-            for (int screenX = 0; screenX < windowWidth; ++screenX)
+            if (from < to)
             {
-                x = xFrom + screenX * (xTo - xFrom) / windowWidth;
-                y = SafeValue(f, x);
-                if (double.IsNaN(y) || double.IsInfinity(y))
-                    continue;
-                minY = Math.Min(y, minY);
-                maxY = Math.Max(y, maxY);
+                for (var i = from; i <= to; i += accuracy)
+                    yield return i;
             }
-            return Tuple.Create(minY, maxY);
+            else
+            {
+                for (var i = from; i >= to; i -= accuracy)
+                    yield return i;
+            }
         }
 
+        // Отрисовка осей координат для 1,2 задач
         public static void DrawAxisAtCenter(Bitmap image, Pen axisPen, Point windowSize)
         {
             DrawAxis(image, axisPen, windowSize, windowSize.X/2, windowSize.Y/2);
@@ -169,21 +185,26 @@ namespace CGG
                 new Point(pTo2.X, pTo2.Y + arrowSize), image, axisPen);
         }
 
-        // Отрисовка самого простого окна
-        public static void ShowImageInWindow(Image image)
-        {
-            var form = new Form { ClientSize = new Size(image.Width, image.Height) };
-            form.Controls.Add(new PictureBox
-            {
-                Image = image,
-                Dock = DockStyle.Fill,
-                SizeMode = PictureBoxSizeMode.CenterImage
-            });
-            form.ShowDialog();
-        }
-
 
 // Task1
+        // Вычислим минимальное и максимальное значения функции на заданном интервале [xFrom; xTo]
+        public static Tuple<double, double> GetMinMaxValues(RealFunction f, double xFrom, double xTo, int windowWidth)
+        {
+            double maxY = double.MinValue,
+                   minY = double.MaxValue;
+            double x, y;
+            for (int screenX = 0; screenX < windowWidth; ++screenX)
+            {
+                x = xFrom + screenX * (xTo - xFrom) / windowWidth;
+                y = SafeValue(f, x);
+                if (double.IsNaN(y) || double.IsInfinity(y))
+                    continue;
+                minY = Math.Min(y, minY);
+                maxY = Math.Max(y, maxY);
+            }
+            return Tuple.Create(minY, maxY);
+        }
+
         // Нарисовать f на [xFrom; xTo] (с ручками и размером окна по умолчанию)
         public static void DrawFunction(RealFunction f, double xFrom, double xTo)
         {
@@ -279,6 +300,7 @@ namespace CGG
             ShowImageInWindow(image);
         }
 
+// Task2
         // Нарисовать параболу с фок.параметром p с помощью алгоритма Брехенхема
         // Версию с комментариями смотри в Task2
         public static void DrawParabolaWithBresenham(double p, Bitmap image, Color color, Point windowSize)
@@ -309,6 +331,8 @@ namespace CGG
             }
         }
 
+// Прочее
+
         public static void DrawLineWithBresenham(Point pFrom, Point pTo, Bitmap image, Pen pen)
         {
             if (pFrom.X == 0) pFrom.X++;
@@ -324,12 +348,12 @@ namespace CGG
         private static void DrawLineWithBresenham(int x0, int y0, int x1, int y1, Bitmap image, Pen pen)
         {
             var width = (int)pen.Width;
-            var even = (width+1) % 2;
-            for (var w = -width/2; w <= width/2 - even; ++w)
+            var even = (width + 1) % 2;
+            for (var w = -width / 2; w <= width / 2 - even; ++w)
             {
-                if (Math.Abs(image.Width/2-(x0+w)) < image.Width/2 && Math.Abs(image.Width/2-(x1+w)) < image.Width/2)
+                if (Math.Abs(image.Width / 2 - (x0 + w)) < image.Width / 2 && Math.Abs(image.Width / 2 - (x1 + w)) < image.Width / 2)
                     DrawLineWithBresenham(x0 + w, y0, x1 + w, y1, image, pen.Color);
-                if (Math.Abs(image.Height/2-(y0+w)) < image.Height/2 && Math.Abs(image.Height/2-(y1+w)) < image.Height/2)
+                if (Math.Abs(image.Height / 2 - (y0 + w)) < image.Height / 2 && Math.Abs(image.Height / 2 - (y1 + w)) < image.Height / 2)
                     DrawLineWithBresenham(x0, y0 + w, x1, y1 + w, image, pen.Color);
             }
         }
@@ -357,9 +381,9 @@ namespace CGG
                 error = (dx >> 1), // Здесь используется оптимизация с умножением на dx, чтобы избавиться от лишних дробей
                 ystep = (y0 < y1) ? 1 : -1, // Выбираем направление роста координаты y
                 y = y0;
-            for (var x = Math.Max(1, x0); x <= Math.Min(image.Width-1, x1); x++)
+            for (var x = Math.Max(1, x0); x <= Math.Min(image.Width - 1, x1); x++)
             {
-                if (Math.Abs(image.Width/2-y) >= image.Width/2 || Math.Abs(image.Height/2-y) >= image.Height/2)
+                if (Math.Abs(image.Width / 2 - y) >= image.Width / 2 || Math.Abs(image.Height / 2 - y) >= image.Height / 2)
                     continue;
                 image.SetPixel(steep ? y : x, steep ? x : y, color);
                 error -= dy;
