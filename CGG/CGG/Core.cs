@@ -19,7 +19,7 @@ namespace CGG
         public static readonly Pen DefaultPen = new Pen(Color.DarkRed, 1);
         public static readonly Pen DefaultAxisPen = new Pen(Color.DarkBlue, 3);
         public static readonly Brush DefaultBackgroundBrush = Brushes.White;
-        public static readonly Pen DefaultPen3DTop = new Pen(Color.DeepPink);
+        public static readonly Pen DefaultPen3DTop = new Pen(Color.DarkRed);
         public static readonly Pen DefaultPen3DBottom = new Pen(Color.Blue);
         public static readonly Point DefaultWindowSize = new Point(600, 600);
 

@@ -187,9 +187,9 @@ namespace Task4
 
             var image = new Bitmap(windowSize.X, windowSize.Y);
             (Graphics.FromImage(image))
-                .FillRectangle(Brushes.White, 0, 0, image.Width, image.Height);
+                .FillRectangle(Brushes.Black, 0, 0, image.Width, image.Height);
 
-            var accuracy = Math.Min((double)(to.X - from.X) / 100, (double)(to.Y - from.Y) / 100);
+            var accuracy = Math.Min((double)(to.X - from.X) / 100, (double)(to.Y - from.Y) / 150);
             var zoomCoef = GetZoomCoeff(z, from, to, accuracy, windowSize.X);
 
             CreateImage1(z, from, to, zoomCoef, accuracy, image, topPen, bottomPen, windowSize.X);
@@ -199,9 +199,8 @@ namespace Task4
 
         private static readonly Core.Real3DFunction[] Functions =
         {
-            (x, y) => x*Math.Sin((x+y)),
-            
-            (x, y) => x*x-y*y+2,
+            (x, y) => Math.Sqrt(-x*x + -y*y + 3*3*3),
+            (x, y) => -Math.Sqrt(-x*x + -y*y + 4*4*4),
             (x, y) => (x),
             (x, y) => (x + y),
             (x, y) => x*y,
@@ -212,7 +211,10 @@ namespace Task4
 //            (x, y) => ,
 //            (x, y) => ,
 //            (x, y) => ,
-
+//            (x, y) =>  Math.Sqrt(x*x+y*y)+3*Math.Cos(Math.Sqrt(x*x+y*y)) + 5,
+//            (x, y) => Math.Sin(Math.Sqrt(x*y)) + Math.Log10(Math.Cos(y)),
+//
+//            (x, y) => Math.Sin(x*y + y) * Math.Log10(Math.Cos(y)),
         };
 
         public static void Main(string[] args)
