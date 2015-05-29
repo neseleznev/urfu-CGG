@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Xml;
+using System.Security.Cryptography.X509Certificates;
 using CGG;
-
 // Task5
 // Интервальный алгоритм построчного сканирования
 // Объект: 2 тетраэдра
@@ -26,15 +20,15 @@ namespace Task4
 
         public Point ToPlaneCoord(double x, double y, double z)
         {
-            return new Point(PlaneX(x, y, z) + Center.X, PlaneY(x, y, z) + Center.Y);
+            return new Point(PlaneX(x, y) + Center.X, PlaneY(x, z) + Center.Y);
         }
 
-        private static int PlaneX(double x, double y, double z)
+        private static int PlaneX(double x, double y)
         {
             return (int)(-x / (2 * Math.Sqrt(2)) + y);
         }
 
-        private static int PlaneY(double x, double y, double z)
+        private static int PlaneY(double x, double z)
         {
             return (int)(x / (2 * Math.Sqrt(2)) - z);
         }
@@ -42,129 +36,163 @@ namespace Task4
 
     class Program
     {
-        static private double GetZoomCoeff(Core.Real3DFunction function, Point from, Point to, double accuracy,
-            int windowSize)
+        public static double SafeValue(Core.Real3DFunction z, double x, double y)
         {
-            var zoomCoef = (double) windowSize/Math.Max(Math.Abs(to.X - from.X), Math.Abs(to.Y - from.Y)); 
+            try
+            {
+                return z(x, y);
+            }
+            catch (OverflowException)
+            {
+                return double.NaN;
+            }
+        }
+
+        private static double GetZoomCoeff(Core.Real3DFunction function, Point from, Point to,
+            CoordConverter coordConverter, double accuracy, Point windowSize)
+        {
+            var zoomCoef = Math.Min((double)windowSize.X / Math.Abs(to.X - from.X), (double)windowSize.Y / Math.Abs(to.Y - from.Y));
             Point minPoint = new Point(int.MaxValue, int.MaxValue),
                 maxPoint = new Point(int.MinValue, int.MinValue);
 
-            var coordConverter = new CoordConverter(windowSize/2, windowSize/2);
             foreach (var x in Core.Range(to.X, from.X, accuracy))
             {
-                foreach (var y in Core.Range(from.Y, to.Y, accuracy / 100))
+                foreach (var y in Core.Range(from.Y, to.Y, accuracy/100))
                 {
-                    var z = function(x, y);
-                    var planePoint = coordConverter.ToPlaneCoord(x * zoomCoef, y * zoomCoef, z * zoomCoef);
-
+                    var z = SafeValue(function, x, y);
+                    if (double.IsNaN(z) || Math.Abs(z) > 1e9) continue;
+                    var planePoint = coordConverter.ToPlaneCoord(x*zoomCoef, y*zoomCoef, z*zoomCoef);
                     minPoint.X = Math.Min(minPoint.X, planePoint.X);
                     minPoint.Y = Math.Min(minPoint.Y, planePoint.Y);
                     maxPoint.X = Math.Max(maxPoint.X, planePoint.X);
                     maxPoint.Y = Math.Max(maxPoint.Y, planePoint.Y);
                 }
             }
-            return zoomCoef * windowSize / Math.Max(maxPoint.X - minPoint.X, maxPoint.Y - minPoint.Y);
+            foreach (var y in Core.Range(to.Y, from.Y, accuracy))
+            {
+                foreach (var x in Core.Range(from.X, to.X, accuracy/100))
+                {
+                    var z = SafeValue(function, x, y);
+                    if (double.IsNaN(z) || Math.Abs(z) > 1e9) continue;
+                    var planePoint = coordConverter.ToPlaneCoord(x*zoomCoef, y*zoomCoef, z*zoomCoef);
+                    minPoint.X = Math.Min(minPoint.X, planePoint.X);
+                    minPoint.Y = Math.Min(minPoint.Y, planePoint.Y);
+                    maxPoint.X = Math.Max(maxPoint.X, planePoint.X);
+                    maxPoint.Y = Math.Max(maxPoint.Y, planePoint.Y);
+                }
+            }
+            return zoomCoef * Math.Min((double)windowSize.X / (maxPoint.X-minPoint.X), (double)windowSize.Y / (maxPoint.Y-minPoint.Y));
         }
 
-		static private void CreateImage1(Core.Real3DFunction function, Point from, Point to, double zoomCoef, double accuracy,
-            Image image, Pen topPen, Pen bottomPen, int windowSize)
+        private static Tuple<Point, Point> GetMinMaxPoints(Core.Real3DFunction function, Point from, Point to,
+            double zoomCoef, CoordConverter coordConverter, double accuracy)
+        {
+            Point minPoint = new Point(int.MaxValue, int.MaxValue),
+                maxPoint = new Point(int.MinValue, int.MinValue);
+            foreach (var y in Core.Range(to.Y, from.Y, accuracy))
+            {
+                foreach (var x in Core.Range(from.X, to.X, accuracy / 100))
+                {
+                    var z = SafeValue(function, x, y);
+                    if (double.IsNaN(z) || Math.Abs(z) > 1e9) continue;
+                    var planePoint = coordConverter.ToPlaneCoord(x*zoomCoef, y*zoomCoef, z*zoomCoef);
+                    minPoint.X = Math.Min(minPoint.X, planePoint.X);
+                    minPoint.Y = Math.Min(minPoint.Y, planePoint.Y);
+                    maxPoint.X = Math.Max(maxPoint.X, planePoint.X);
+                    maxPoint.Y = Math.Max(maxPoint.Y, planePoint.Y);
+                }
+            }
+            return new Tuple<Point, Point>(minPoint, maxPoint);
+        }
+
+        static private void CreateImage(Core.Real3DFunction function, Point from, Point to, Point minPoint, Point maxPoint,
+            CoordConverter coordConverter, double zoomCoef, double accuracy, Graphics g, Pen topPen, Pen bottomPen, Point windowSize)
 		{
-            var coordConverter = new CoordConverter(windowSize / 2, windowSize / 2);
-			var topHorizon = new int[windowSize];
-			var bottomHorizon = new int[windowSize];
-			for (var i = 0; i < windowSize; i++)
+			var topHorizon = new int[windowSize.X];
+			var bottomHorizon = new int[windowSize.X];
+			for (var i = 0; i < windowSize.X; i++)
 			{
 				topHorizon[i] = int.MinValue;
 				bottomHorizon[i] = int.MaxValue;
 			}
+            int shiftX = - minPoint.X + (windowSize.X - (maxPoint.X-minPoint.X))/2,
+                shiftY = - minPoint.Y + (windowSize.Y - (maxPoint.Y-minPoint.Y))/2;
 
 			foreach (var x in Core.Range(to.X, from.X, accuracy))
 			{
-				var z = function(x, from.Y);
-				var lastPoint = coordConverter.ToPlaneCoord(x * zoomCoef, from.Y * zoomCoef, z * zoomCoef);
+                var lastPoint = coordConverter.ToPlaneCoord(x * zoomCoef, from.Y * zoomCoef, function(x, from.Y) * zoomCoef);
+			    lastPoint.X += shiftX;
+			    lastPoint.Y += shiftY;
+
                 foreach (var y in Core.Range(from.Y, to.Y, accuracy / 100))
 				{
-					z = function(x, y);
-					var zoomedX = x * zoomCoef;
-					var zoomedY = y * zoomCoef;
-					var zoomedZ = z * zoomCoef;
-					var planePoint = coordConverter.ToPlaneCoord(zoomedX, zoomedY, zoomedZ);
+                    var planePoint = coordConverter.ToPlaneCoord(x * zoomCoef, y * zoomCoef, function(x, y) * zoomCoef);
+				    planePoint.X += shiftX;
+				    planePoint.Y += shiftY;
 
-					if (planePoint.X < 0 || planePoint.X >= windowSize || planePoint.Y < 0 || planePoint.Y >= windowSize)
+					if (planePoint.X < 0 || planePoint.X >= windowSize.X || planePoint.Y < 0 || planePoint.Y >= windowSize.Y)
 						continue;
 					if (lastPoint.X == planePoint.X)
 						continue;
-                    if (lastPoint.X < 0 || lastPoint.X >= windowSize || lastPoint.Y < 0 || lastPoint.Y >= windowSize)
+                    if (lastPoint.X < 0 || lastPoint.X >= windowSize.X || lastPoint.Y < 0 || lastPoint.Y >= windowSize.Y)
                         lastPoint = planePoint;
 
 					if (planePoint.Y >= topHorizon[planePoint.X])
 					{
                         topHorizon[planePoint.X] = planePoint.Y;
-                        //Graphics.FromImage(image).DrawLine(topPen, lastPoint.X, lastPoint.Y, planePoint.X, planePoint.Y);
-                        Core.DrawLineWithBresenham(lastPoint, planePoint, (Bitmap)image, topPen);
+                        g.DrawLine(topPen, lastPoint.X, lastPoint.Y, planePoint.X, planePoint.Y);
 					}
-
 					if (planePoint.Y <= bottomHorizon[planePoint.X])
 					{
                         bottomHorizon[planePoint.X] = planePoint.Y;
-                        //Graphics.FromImage(image).DrawLine(bottomPen, lastPoint.X, lastPoint.Y, planePoint.X, planePoint.Y);
-                        Core.DrawLineWithBresenham(lastPoint, planePoint, (Bitmap)image, bottomPen);
+                        g.DrawLine(bottomPen, lastPoint.X, lastPoint.Y, planePoint.X, planePoint.Y);
 					}
 					lastPoint = planePoint;
 				}
 			}
-		}
 
-        static private void CreateImage2(Core.Real3DFunction function, Point from, Point to, double zoomCoef, double accuracy,
-            Image image, Pen topPen, Pen bottomPen, int windowSize)
-		{
-            var coordConverter = new CoordConverter(windowSize / 2, windowSize / 2);
-			var topHorizon = new int[windowSize];
-			var bottomHorizon = new int[windowSize];
 
-			for (var i = 0; i < windowSize; i++)
-			{
-				topHorizon[i] = int.MinValue;
-				bottomHorizon[i] = int.MaxValue;
-			}
+//            topHorizon = new int[windowSize.Y];
+//            bottomHorizon = new int[windowSize.Y];
+            for (var i = 0; i < windowSize.X; i++)
+            {
+                topHorizon[i] = int.MinValue;
+                bottomHorizon[i] = int.MaxValue;
+            }
 
             foreach (var y in Core.Range(to.Y, from.Y, accuracy))
-			{
-				var z = function(from.X, y);
-				var lastPoint = coordConverter.ToPlaneCoord(from.X * zoomCoef, y * zoomCoef, z * zoomCoef);
+            {
+                var lastPoint = coordConverter.ToPlaneCoord(from.X * zoomCoef, y * zoomCoef, function(from.X, y) * zoomCoef);
+                lastPoint.X += shiftX;
+                lastPoint.Y += shiftY;
+                
                 foreach (var x in Core.Range(from.X, to.X, accuracy / 100))
-				{
-					z = function(x, y);
-					var zoomedX = x * zoomCoef;
-					var zoomedY = y * zoomCoef;
-					var zoomedZ = z * zoomCoef;
-					var planePoint = coordConverter.ToPlaneCoord(zoomedX, zoomedY, zoomedZ);
+                {
+                    var planePoint = coordConverter.ToPlaneCoord(x * zoomCoef, y * zoomCoef, function(x, y) * zoomCoef);
+                    planePoint.X += shiftX;
+                    planePoint.Y += shiftY;
 
-                    if (planePoint.X < 0 || planePoint.X >= windowSize || planePoint.Y < 0 || planePoint.Y >= windowSize)
+                    if (planePoint.X < 0 || planePoint.X >= windowSize.X || planePoint.Y < 0 || planePoint.Y >= windowSize.Y)
                         continue;
                     if (lastPoint.X == planePoint.X)
                         continue;
-                    if (lastPoint.X < 0 || lastPoint.X >= windowSize || lastPoint.Y < 0 || lastPoint.Y >= windowSize)
+                    if (lastPoint.X < 0 || lastPoint.X >= windowSize.X || lastPoint.Y < 0 || lastPoint.Y >= windowSize.Y)
                         lastPoint = planePoint;
 
-					if (planePoint.Y >= topHorizon[planePoint.X])
-					{
-						topHorizon[planePoint.X] = planePoint.Y;
-						//Graphics.FromImage(image).DrawLine(topPen, lastPoint.X, lastPoint.Y, planePoint.X, planePoint.Y);
-                        Core.DrawLineWithBresenham(lastPoint, planePoint, (Bitmap)image, topPen);
-					}
-
-					if (planePoint.Y <= bottomHorizon[planePoint.X])
-					{
-						bottomHorizon[planePoint.X] = planePoint.Y;
-                        //Graphics.FromImage(image).DrawLine(bottomPen, lastPoint.X, lastPoint.Y, planePoint.X, planePoint.Y);
-                        Core.DrawLineWithBresenham(lastPoint, planePoint, (Bitmap)image, bottomPen);
-					}
-					lastPoint = planePoint;
-				}
-			}
-		}
-
+                    if (planePoint.Y >= topHorizon[planePoint.X])
+                    {
+                        topHorizon[planePoint.X] = planePoint.Y;
+                        g.DrawLine(topPen, lastPoint.X, lastPoint.Y, planePoint.X, planePoint.Y);
+                    }
+                    if (planePoint.Y <= bottomHorizon[planePoint.X])
+                    {
+                        bottomHorizon[planePoint.X] = planePoint.Y;
+                        g.DrawLine(bottomPen, lastPoint.X, lastPoint.Y, planePoint.X, planePoint.Y);
+                    }
+                    lastPoint = planePoint;
+                }
+            }
+        }
 
 // Task4
         public static void Draw3DFunction(Core.Real3DFunction z, Point from, Point to)
@@ -181,46 +209,64 @@ namespace Task4
         }
         public static void Draw3DFunction(Core.Real3DFunction z, Point from, Point to, Pen pen, Pen topPen, Pen bottomPen, Point windowSize)
         {
-            if ((windowSize.X * windowSize.Y == 0) || ((windowSize.X ^ windowSize.Y) != 0))
-                throw new ArgumentException("Неверные параметры!" +
-                                            "Измерения windowSize не должны быть нулевыми и совпадать.");
+            if ((windowSize.X * windowSize.Y == 0))// || ((windowSize.X ^ windowSize.Y) != 0))
+                throw new ArgumentException("Неверные параметры! Измерения windowSize должны быть ненулевыми и совпадать.");
 
             var image = new Bitmap(windowSize.X, windowSize.Y);
-            (Graphics.FromImage(image))
-                .FillRectangle(Brushes.Black, 0, 0, image.Width, image.Height);
+            var g = Graphics.FromImage(image);
+            g.FillRectangle(Core.DefaultBackgroundBrush, 0, 0, image.Width, image.Height);
 
-            var accuracy = Math.Min((double)(to.X - from.X) / 100, (double)(to.Y - from.Y) / 150);
-            var zoomCoef = GetZoomCoeff(z, from, to, accuracy, windowSize.X);
+            var coordConverter = new CoordConverter(windowSize.X / 2, windowSize.Y / 2);
 
-            CreateImage1(z, from, to, zoomCoef, accuracy, image, topPen, bottomPen, windowSize.X);
-            CreateImage2(z, from, to, zoomCoef, accuracy, image, topPen, bottomPen, windowSize.X);
+            var accuracy = Math.Min((double)(to.X - from.X) / 100, (double)(to.Y - from.Y) / 100);
+            var zoomCoef = GetZoomCoeff(z, from, to, coordConverter, accuracy, windowSize);
+            var minMax = GetMinMaxPoints(z, from, to, zoomCoef, coordConverter, accuracy);
+
+            CreateImage(z, from, to, minMax.Item1, minMax.Item2, coordConverter, zoomCoef, accuracy, g, topPen, bottomPen, windowSize);
             Core.ShowImageInWindow(image);
+        }
+
+        public static double SlicedSphere(double x, double y)
+        {
+            const double r = 2.5;
+            if (x > 0 && y < 0) // 4 Квадрант
+                return -Math.Sqrt(-(x-r)*(x-r) - (y+r)*(y+r) + r*r) + r/2;
+            if (x < 0 && y > 0) // 2 Квадрант
+                return Math.Sqrt(-(x+r)*(x+r) - (y-r)*(y-r) + r*r) - r/2;
+            return double.NaN;
         }
 
         private static readonly Core.Real3DFunction[] Functions =
         {
-            (x, y) => Math.Sqrt(-x*x + -y*y + 3*3*3),
-            (x, y) => -Math.Sqrt(-x*x + -y*y + 4*4*4),
+            (x, y) => x*x + y*y,
+            (x, y) => 3*Math.Sin(x*y),
+            SlicedSphere,
             (x, y) => (x),
             (x, y) => (x + y),
             (x, y) => x*y,
             (x, y) => x*Math.Sin(x*y),
             (x, y) => Math.Sin(y * Math.Cos(x)),
             (x, y) => Math.Sin(x*x + y*y) * Math.Cos(x - y),
+            (x, y) =>  Math.Sqrt(x*x+y*y)+3*Math.Cos(Math.Sqrt(x*x+y*y)) + 5,
 //            (x, y) => ,
 //            (x, y) => ,
 //            (x, y) => ,
 //            (x, y) => ,
-//            (x, y) =>  Math.Sqrt(x*x+y*y)+3*Math.Cos(Math.Sqrt(x*x+y*y)) + 5,
+
+//             Злые примеры
 //            (x, y) => Math.Sin(Math.Sqrt(x*y)) + Math.Log10(Math.Cos(y)),
-//
 //            (x, y) => Math.Sin(x*y + y) * Math.Log10(Math.Cos(y)),
         };
 
         public static void Main(string[] args)
         {
+            Core.Real3DFunction goodMorning =
+                (x, y) => 100.0 - 3.0/Math.Sqrt(Math.Max(x*x + y*y, 0.02)) + Math.Sin(Math.Sqrt(x*x + y*y)) +
+                          Math.Sqrt(200.0 - x*x + y*y + 10.0*Math.Sin(x) + 10.0*Math.Sin(y))/1000.0;
+            Draw3DFunction(goodMorning, new Point(-15, -15), new Point(15, 15), new Point(1920 - 100, 1080 - 100));
+
             foreach (var function in Functions)
-                Draw3DFunction(function, new Point(-5, -5), new Point(5, 5), new Point(700, 700));
+                Draw3DFunction(function, new Point(-2, -2), new Point(5, 5), new Point(1200, 675));
         }
     }
 }
