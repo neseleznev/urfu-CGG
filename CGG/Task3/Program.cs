@@ -17,9 +17,15 @@ namespace Task3
     {
         private static readonly Point[][] Tests =
         {
-//            new [] {new PointF(10, 10), new PointF(10, 20), new PointF(20, 20), new PointF(20, 10), },
+            new [] {new Point(10, 10), new Point(10, 20), new Point(20, 20), new Point(20, 10), },
             new [] {new Point(10, 20), new Point(20, 30), new Point(30, 20), new Point(20, 40), new Point(50, 10), new Point(30, 10), new Point(10, 20),},
-//            new Point[] {}, 
+            new []
+            {
+                new Point(170,140), new Point(140,140), new Point(140,110),new Point(180,110),new Point(180,100),new Point(130,100),new Point(130,140),new Point(140,150),
+                new Point(160,150),new Point(140,170),new Point(110,170),new Point(100,190),new Point(140,190),new Point(170,160),new Point(210,160),new Point(210,180),
+                new Point(230,180),new Point(230,160),new Point(250,160),new Point(250,140),new Point(230,140),new Point(230,120),new Point(210,120),new Point(210,140),
+                new Point(190,140),new Point(190,159),new Point(170,159),
+            }, 
         };
 
         public static int IsPointInsidePolygon(Point[] p, Point point)
@@ -73,10 +79,10 @@ namespace Task3
             if (windowSize.X * windowSize.Y == 0)
                 throw new ArgumentException("Неверные параметры! Измерения windowSize не должны быть нулевыми.");
             
-            windowSize = new Point(100, 100);
+            windowSize = new Point(600, 600);
             var image = new Bitmap(windowSize.X, windowSize.Y);
             var g = Graphics.FromImage(image);
-            g.FillRectangle(Core.DefaultBackgroundBrush, 0, 0, windowSize.X, windowSize.Y);
+            g.FillRectangle(Core.DefaultBackgroundBrush, 0, 0, windowSize.X-1, windowSize.Y-1);
             g.FillPolygon(brush, polygon);
             return image;
         }
@@ -92,46 +98,55 @@ namespace Task3
 
         private static Point[] FindSquareConvex(Bitmap image, Point[] polygon)
         {
-            int minY = int.MaxValue,
-                maxX = int.MinValue;
+            Point minPoint = new Point(int.MaxValue, int.MaxValue),
+                maxPoint = new Point(int.MinValue, int.MinValue);
             foreach (var v in polygon)
             {
-                minY = Math.Min(minY, v.Y);
-                maxX = Math.Max(maxX, v.X);
+                minPoint.X = Math.Min(minPoint.X, v.X);
+                minPoint.Y = Math.Min(minPoint.Y, v.Y);
+                maxPoint.X = Math.Max(maxPoint.X, v.X);
+                maxPoint.Y = Math.Max(maxPoint.Y, v.Y);
             }
             var bestSquare = new [] {new Point(0, 0), new Point(0, image.Height), new Point(image.Width, image.Height), new Point(image.Width, 0)};
             var square = new Point[4];
-            var minSide = int.MaxValue;
+            var minSize = (int)Math.Sqrt((maxPoint.X-minPoint.X)*(maxPoint.X-minPoint.X) + (maxPoint.Y-minPoint.Y)*(maxPoint.Y-minPoint.Y)) + 1;
             var cnt = 0;
             
-            for (var x = 0; x <= maxX; ++x)
+            for (var x = minPoint.X-1; x <= maxPoint.X; ++x)
             {
-                for (var y = 0; y <= minY; ++y)
+                for (var y = minPoint.Y; y >= 0; --y)
                 {
-                    for (var phi = 0.0; phi < Math.PI/2; phi += 0.001)
+                    if (IsPointInsidePolygon(polygon, new Point(x, y)) == 1)
+                        break;
+                    for (var size = 1; size < minSize; ++size)
                     {
-                        for (var size = 1; size < image.Height; ++size)
+                        for (var phi = 0.0; phi < Math.PI / 2; phi += 0.1)
                         {
-                            square[0] = new Point(x,                                 y);
-                            square[1] = new Point(x + RotateByPhiX(0, size, phi),    y + RotateByPhiY(0, size, phi));
-                            square[2] = new Point(x + RotateByPhiX(size, size, phi), y + RotateByPhiY(size, size, phi));
-                            square[3] = new Point(x + RotateByPhiX(size, 0, phi),    y + RotateByPhiY(size, 0, phi));
+                            square[0].X = x;                                 square[0].Y = y;
+                            square[1].X = x + RotateByPhiX(0, size, phi);    square[1].Y = y + RotateByPhiY(0, size, phi);
+                            square[2].X = x + RotateByPhiX(size, size, phi); square[2].Y = y + RotateByPhiY(size, size, phi);
+                            square[3].X = x + RotateByPhiX(size, 0, phi);    square[3].Y = y + RotateByPhiY(size, 0, phi);
+                            if (maxPoint.X > square[3].X || minPoint.Y > square[1].Y)
+                                goto break_phi_loop;
+                            if (square[1].X < 0 || square[3].X > image.Width || square[2].Y > image.Height)
+                                goto break_size_loop;   
                             if (polygon.Sum(pt => IsPointInsidePolygon(square, pt)) == polygon.Length)
                             {
                                 ++cnt;
-                                var side = (square[1].X - square[0].X) * (square[1].X - square[0].X) +
-                                          (square[1].Y - square[0].Y) * (square[1].Y - square[0].Y);
-                                if (!(side < minSide)) break;
-                                minSide = side;
-                                for (var i = 0; i < 4; ++i)
-                                    bestSquare[i] = square[i];
+                                minSize = size;
+                                bestSquare[0] = square[0];
+                                bestSquare[1] = square[1];
+                                bestSquare[2] = square[2];
+                                bestSquare[3] = square[3];
                                 break;   
                             }
                         }
+                    break_phi_loop: ;
                     }
+                break_size_loop: ;
                 }
             }
-            Console.WriteLine("{0}, {1}", cnt, Math.Sqrt(minSide));
+            Console.WriteLine("{0}, {1}", cnt, minSize);
             return bestSquare;
         }
 
