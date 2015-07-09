@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Shapes;
 using CGG;
 using Color = System.Drawing.Color;
@@ -17,8 +19,12 @@ namespace Task3
     {
         private static readonly Point[][] Tests =
         {
+            new [] {new Point(300, 300), new Point(200, 200),  new Point(300, 400),  new Point(400, 500), },
+            new [] {new Point(100, 200), new Point(250, 210), new Point(400, 200), new Point(250, 190), },
             new [] {new Point(10, 10), new Point(10, 20), new Point(20, 20), new Point(20, 10), },
             new [] {new Point(10, 20), new Point(20, 30), new Point(30, 20), new Point(20, 40), new Point(50, 10), new Point(30, 10), new Point(10, 20),},
+            new [] {new Point(10, 10), new Point(20, 10), new Point(20, 30), new Point(30, 30), new Point(30, 20), new Point(10, 20), },
+            new [] {new Point(110, 110), new Point(110, 150), new Point(150, 150), new Point(150, 130), new Point(130, 130), new Point(130, 160), new Point(220, 170), new Point(200, 110), },
             new []
             {
                 new Point(170,140), new Point(140,140), new Point(140,110),new Point(180,110),new Point(180,100),new Point(130,100),new Point(130,140),new Point(140,150),
@@ -79,7 +85,7 @@ namespace Task3
             if (windowSize.X * windowSize.Y == 0)
                 throw new ArgumentException("Неверные параметры! Измерения windowSize не должны быть нулевыми.");
             
-            windowSize = new Point(600, 600);
+            windowSize = new Point(400, 500);
             var image = new Bitmap(windowSize.X, windowSize.Y);
             var g = Graphics.FromImage(image);
             g.FillRectangle(Core.DefaultBackgroundBrush, 0, 0, windowSize.X-1, windowSize.Y-1);
@@ -87,69 +93,86 @@ namespace Task3
             return image;
         }
 
-        public static int RotateByPhiX(int x, int y, double phi)
+//        // Uncomment if you want minSquare to fit the screen
+//        public static bool IsSquareFits(Point[] minSquare, Image image)
+//        {
+//            return minSquare.All(t => (0 <= t.X && t.X <= image.Width) && (0 <= t.Y && t.Y <= image.Height));
+//        }
+
+        public static Point RotateByPhi(Point p, double phi)
         {
-            return (int)(x * Math.Cos(phi) - y * Math.Sin(phi));
-        }
-        public static int RotateByPhiY(int x, int y, double phi)
-        {
-            return (int)(x * Math.Sin(phi) + y * Math.Cos(phi));
+            return new Point((int)(p.X * Math.Cos(-phi) - p.Y * Math.Sin(-phi)),
+                             (int)(p.X * Math.Sin(-phi) + p.Y * Math.Cos(-phi)));
         }
 
         private static Point[] FindSquareConvex(Bitmap image, Point[] polygon)
         {
-            Point minPoint = new Point(int.MaxValue, int.MaxValue),
-                maxPoint = new Point(int.MinValue, int.MinValue);
-            foreach (var v in polygon)
-            {
-                minPoint.X = Math.Min(minPoint.X, v.X);
-                minPoint.Y = Math.Min(minPoint.Y, v.Y);
-                maxPoint.X = Math.Max(maxPoint.X, v.X);
-                maxPoint.Y = Math.Max(maxPoint.Y, v.Y);
-            }
-            var bestSquare = new [] {new Point(0, 0), new Point(0, image.Height), new Point(image.Width, image.Height), new Point(image.Width, 0)};
+            var minSquare = new [] {new Point(0, 0), new Point(0, image.Height), new Point(image.Width, image.Height), new Point(image.Width, 0)};
             var square = new Point[4];
-            var minSize = (int)Math.Sqrt((maxPoint.X-minPoint.X)*(maxPoint.X-minPoint.X) + (maxPoint.Y-minPoint.Y)*(maxPoint.Y-minPoint.Y)) + 1;
-            var cnt = 0;
-            
-            for (var x = minPoint.X-1; x <= maxPoint.X; ++x)
+            var minSize = Math.Min(image.Width, image.Height);
+
+            for (var phi = 0.0; phi < Math.PI/2; phi += 0.1)
             {
-                for (var y = minPoint.Y; y >= 0; --y)
+                var rotatedPolygon = polygon.Select(point => RotateByPhi(point, phi)).ToList();
+
+                Point minPoint = new Point(int.MaxValue, int.MaxValue),
+                    maxPoint = new Point(int.MinValue, int.MinValue);
+                foreach (var v in rotatedPolygon)
                 {
-                    if (IsPointInsidePolygon(polygon, new Point(x, y)) == 1)
-                        break;
-                    for (var size = 1; size < minSize; ++size)
+                    minPoint.X = Math.Min(minPoint.X, v.X);
+                    minPoint.Y = Math.Min(minPoint.Y, v.Y);
+                    maxPoint.X = Math.Max(maxPoint.X, v.X);
+                    maxPoint.Y = Math.Max(maxPoint.Y, v.Y);
+                }
+
+                int minX = maxPoint.X - minPoint.X,
+                    minY = maxPoint.Y - minPoint.Y;
+                if (Math.Max(minX, minY) < minSize)
+                {
+                    var delta = Math.Abs(minX - minY);
+                    if (minX < minY)
                     {
-                        for (var phi = 0.0; phi < Math.PI / 2; phi += 0.1)
-                        {
-                            square[0].X = x;                                 square[0].Y = y;
-                            square[1].X = x + RotateByPhiX(0, size, phi);    square[1].Y = y + RotateByPhiY(0, size, phi);
-                            square[2].X = x + RotateByPhiX(size, size, phi); square[2].Y = y + RotateByPhiY(size, size, phi);
-                            square[3].X = x + RotateByPhiX(size, 0, phi);    square[3].Y = y + RotateByPhiY(size, 0, phi);
-                            if (maxPoint.X > square[3].X || minPoint.Y > square[1].Y)
-                                goto break_phi_loop;
-                            if (square[1].X < 0 || square[3].X > image.Width || square[2].Y > image.Height)
-                                goto break_size_loop;   
-                            if (polygon.Sum(pt => IsPointInsidePolygon(square, pt)) == polygon.Length)
-                            {
-                                ++cnt;
-                                minSize = size;
-                                bestSquare[0] = square[0];
-                                bestSquare[1] = square[1];
-                                bestSquare[2] = square[2];
-                                bestSquare[3] = square[3];
-                                break;   
-                            }
-                        }
-                    break_phi_loop: ;
+                        square[0] = RotateByPhi(new Point(minPoint.X - delta, minPoint.Y), -phi);
+                        square[1] = RotateByPhi(new Point(minPoint.X - delta, maxPoint.Y), -phi);
+                        square[2] = RotateByPhi(new Point(maxPoint.X, maxPoint.Y), -phi);
+                        square[3] = RotateByPhi(new Point(maxPoint.X, minPoint.Y), -phi);
+//                        // Uncomment if you want minSquare to fit the screen
+//                        if (!IsSquareFits(square, image))
+//                        {
+//                            square[0] = RotateByPhi(new Point(minPoint.X, minPoint.Y), -phi);
+//                            square[1] = RotateByPhi(new Point(minPoint.X, maxPoint.Y), -phi);
+//                            square[2] = RotateByPhi(new Point(maxPoint.X+delta, maxPoint.Y), -phi);
+//                            square[3] = RotateByPhi(new Point(maxPoint.X+delta, minPoint.Y), -phi);
+//                            if (!IsSquareFits(square, image))
+//                                continue;
+//                        }
                     }
-                break_size_loop: ;
+                    else
+                    {
+                        square[0] = RotateByPhi(new Point(minPoint.X, minPoint.Y-delta), -phi);
+                        square[1] = RotateByPhi(new Point(minPoint.X, maxPoint.Y), -phi);
+                        square[2] = RotateByPhi(new Point(maxPoint.X, maxPoint.Y), -phi);
+                        square[3] = RotateByPhi(new Point(maxPoint.X, minPoint.Y-delta), -phi);
+//                        // Uncomment if you want minSquare to fit the screen
+//                        if (!IsSquareFits(square, image))
+//                        {
+//                            square[0] = RotateByPhi(new Point(minPoint.X, minPoint.Y), -phi);
+//                            square[1] = RotateByPhi(new Point(minPoint.X, maxPoint.Y+delta), -phi);
+//                            square[2] = RotateByPhi(new Point(maxPoint.X, maxPoint.Y+delta), -phi);
+//                            square[3] = RotateByPhi(new Point(maxPoint.X, minPoint.Y), -phi);
+//                            if (!IsSquareFits(square, image))
+//                                continue;
+//                        }
+                    }
+                    minSize = Math.Max(minX, minY);
+                    for (var i = 0; i < 4; ++i)
+                        minSquare[i] = square[i];
                 }
             }
-            Console.WriteLine("{0}, {1}", cnt, minSize);
-            return bestSquare;
+            Console.WriteLine(minSize);
+            return minSquare;
         }
-
+        
         public static void Main(string[] args)
         {
             foreach (var polygon in Tests)
